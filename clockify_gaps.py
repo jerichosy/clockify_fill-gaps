@@ -136,10 +136,30 @@ def preview_week():
     user_id = user["id"]
     print(f"Logged in as {user.get('name') or user.get('email')}  (user_id={user_id})")
 
-    today = datetime.date.today()
+
+    # today = datetime.date.today()
+    # monday = today - datetime.timedelta(days=today.weekday())
+    # start = datetime.datetime.combine(monday, datetime.time(0, 0, tzinfo=datetime.timezone.utc))
+    # end = start + datetime.timedelta(days=7)
+
+    # --- determine which week to analyse ---
+    # Default: current date. Optional: user enters any date (YYYY‑MM‑DD)
+    ref_input = input("Enter any date within the week to preview (blank for today): ").strip()
+    if ref_input:
+        try:
+            today = datetime.date.fromisoformat(ref_input)
+        except ValueError:
+            today = datetime.date.today()
+            print("Invalid format; using today instead.")
+    else:
+        today = datetime.date.today()
+
+    # compute Monday–Sunday containing that day
     monday = today - datetime.timedelta(days=today.weekday())
-    start = datetime.datetime.combine(monday, datetime.time(0, 0, tzinfo=datetime.timezone.utc))
-    end = start + datetime.timedelta(days=7)
+    start = datetime.datetime.combine(monday, datetime.time(0,0,tzinfo=datetime.timezone.utc))
+    end   = start + datetime.timedelta(days=7)
+    print(f"Previewing week of {monday:%Y-%m-%d} → {(end.date()-datetime.timedelta(days=1)):%Y-%m-%d}")
+
 
     entries, raw_data = get_entries(WORKSPACE_ID, user_id, start, end)
     print(f"Retrieved {len(entries)} entries for current week (local tz {LOCAL_TZ.key}).")
@@ -169,7 +189,7 @@ def preview_week():
         project = first_raw.get("projectId") or first_raw.get("project",{}).get("id")
         task    = first_raw.get("taskId") or first_raw.get("task",{}).get("id")
         billable = bool(first_raw.get("billable", True))
-        desc = "[Auto‑fill Dev Work]"
+        desc = "[Dev Work & Bug Fixing]"
         for s,e in find_gaps(by_day[day], WORK_START, WORK_END):
             # build local datetimes for the same day
             s_dt = datetime.datetime.combine(day, datetime.time.fromisoformat(s), tzinfo=LOCAL_TZ)
