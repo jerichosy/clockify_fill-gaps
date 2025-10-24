@@ -15,16 +15,19 @@ import requests
 import datetime
 from dateutil import parser
 from zoneinfo import ZoneInfo   # Python 3.9+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ====== configuration ======
 API_KEY = os.getenv("CLOCKIFY_KEY")
 if not API_KEY:
     raise SystemExit("Please set your API key in CLOCKIFY_KEY environment variable.")
 
-WORKSPACE_ID = "65fb8f6f9c0c297dc5efdef5"  # <-- put your workspace ID here
+WORKSPACE_ID = os.getenv("CLOCKIFY_WORKSPACE_ID")
 LOCAL_TZ = ZoneInfo("Asia/Manila")         # your actual timezone
-WORK_START = 8 * 60   # 08:00
-WORK_END   = 17 * 60  # 17:00
+WORK_START = 9 * 60   # 09:00
+WORK_END   = 18 * 60  # 18:00
 
 HEADERS = {"x-api-key": API_KEY}
 
@@ -173,7 +176,7 @@ def preview_week():
             e_dt = datetime.datetime.combine(day, datetime.time.fromisoformat(e), tzinfo=LOCAL_TZ)
             print(f"→ Creating {desc} {s}-{e} ({day})")
             # uncomment next line when ready:
-            # post_time_entry(WORKSPACE_ID, project, task, desc, s_dt, e_dt, billable)
+            post_time_entry(WORKSPACE_ID, project, task, desc, s_dt, e_dt, billable)
 
 
 # ====== run ======
