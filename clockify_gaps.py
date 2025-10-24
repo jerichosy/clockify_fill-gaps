@@ -4,7 +4,6 @@ Clockify Weekly Gap Preview (local‑time corrected)
 
 Requirements:
   pip install requests python-dateutil
-
 """
 
 # TODO: for next payroll period as it doesn't currently consider lunch breaks https://openwebui.jerichosy.com/s/b201e23b-faed-47b4-9142-2ab5acfccdc6
@@ -24,9 +23,12 @@ if not API_KEY:
     raise SystemExit("Please set your API key in CLOCKIFY_KEY environment variable.")
 
 WORKSPACE_ID = os.getenv("CLOCKIFY_WORKSPACE_ID")
+if not WORKSPACE_ID:
+    raise SystemExit("Please set your workspace ID in CLOCKIFY_WORKSPACE_ID environment variable.")
 LOCAL_TZ = ZoneInfo("Asia/Manila")         # your actual timezone
 WORK_START = 9 * 60   # 09:00
 WORK_END   = 18 * 60  # 18:00
+ENTRY_DESC = "[Dev Work & Bug Fixing]"
 
 HEADERS = {"x-api-key": API_KEY}
 
@@ -188,7 +190,7 @@ def preview_week():
         project = first_raw.get("projectId") or first_raw.get("project",{}).get("id")
         task    = first_raw.get("taskId") or first_raw.get("task",{}).get("id")
         billable = bool(first_raw.get("billable", True))
-        desc = "[Dev Work & Bug Fixing]"
+        desc = ENTRY_DESC
         for s,e in find_gaps(by_day[day], WORK_START, WORK_END):
             # build local datetimes for the same day
             s_dt = datetime.datetime.combine(day, datetime.time.fromisoformat(s), tzinfo=LOCAL_TZ)
