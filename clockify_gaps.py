@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Clockify Weekly Gap Preview (local‑time corrected, read‑only)
+Clockify Weekly Gap Preview (local‑time corrected)
 
 Requirements:
   pip install requests python-dateutil
 
-Usage:
-  export CLOCKIFY_KEY=your_api_key
-  python clockify_weekly_gaps.py
 """
+
+# TODO: for next payroll period as it doesn't currently consider lunch breaks https://openwebui.jerichosy.com/s/b201e23b-faed-47b4-9142-2ab5acfccdc6
 
 import os
 import requests
