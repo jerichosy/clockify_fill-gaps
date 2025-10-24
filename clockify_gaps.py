@@ -172,7 +172,7 @@ def preview_week():
         print(f"{day}  →  {gap_list}")
 
     if not by_day:
-        print("No entries found for this week. Check workspace ID or API key.")
+        print("No entries found for this week. Check year input, workspace ID or API key.")
 
     # after printing gaps
     confirm = input("\nCreate filler entries for shown gaps? (y/N): ").strip().lower()
