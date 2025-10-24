@@ -87,6 +87,7 @@ def get_entries(workspace_id, user_id, start_dt, end_dt):
     r = requests.get(url, headers=HEADERS)
     r.raise_for_status()
     data = r.json()
+    raw_data = r.json()          # keep the full JSON
     entries = []
     for t in data:
         ti = t.get("timeInterval", {})
@@ -94,7 +95,28 @@ def get_entries(workspace_id, user_id, start_dt, end_dt):
             start = parser.isoparse(ti["start"]).astimezone(LOCAL_TZ)
             end   = parser.isoparse(ti["end"]).astimezone(LOCAL_TZ)
             entries.append((start, end))
-    return entries
+    return entries, raw_data
+
+
+def post_time_entry(workspace_id, project_id, task_id, description,
+                    start_dt, end_dt, billable=True):
+    """POST one new time entry to Clockify."""
+    body = {
+        "start": start_dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end":   end_dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "billable": billable,
+        "projectId": project_id,
+        "taskId": task_id,
+        "description": description,
+        # optional flags:
+        "type": "REGULAR",
+    }
+
+    url = f"https://api.clockify.me/api/v1/workspaces/{workspace_id}/time-entries"
+    res = requests.post(url, headers=HEADERS, json=body)
+    if res.status_code not in (200,201):
+        print("⚠️  POST failed:", res.status_code, res.text)
+    return res
 
 
 def group_by_local_day(entries):
@@ -116,7 +138,7 @@ def preview_week():
     start = datetime.datetime.combine(monday, datetime.time(0, 0, tzinfo=datetime.timezone.utc))
     end = start + datetime.timedelta(days=7)
 
-    entries = get_entries(WORKSPACE_ID, user_id, start, end)
+    entries, raw_data = get_entries(WORKSPACE_ID, user_id, start, end)
     print(f"Retrieved {len(entries)} entries for current week (local tz {LOCAL_TZ.key}).")
 
     by_day = group_by_local_day(entries)
@@ -128,6 +150,30 @@ def preview_week():
 
     if not by_day:
         print("No entries found for this week. Check workspace ID or API key.")
+
+    # after printing gaps
+    confirm = input("\nCreate filler entries for shown gaps? (y/N): ").strip().lower()
+    if confirm != "y":
+        print("No entries created.");  return
+
+    # create one filler entry per gap, reusing first meeting's project/task
+    for day in sorted(by_day):
+        if not by_day[day]: continue
+        # reuse project/task info from first meeting JSON in this day
+        first_raw = next((t for t in raw_data if parser.isoparse(t["timeInterval"]["start"]).astimezone(LOCAL_TZ).date()==day), None)
+        if not first_raw:
+            continue
+        project = first_raw.get("projectId") or first_raw.get("project",{}).get("id")
+        task    = first_raw.get("taskId") or first_raw.get("task",{}).get("id")
+        billable = bool(first_raw.get("billable", True))
+        desc = "[Auto‑fill Dev Work]"
+        for s,e in find_gaps(by_day[day], WORK_START, WORK_END):
+            # build local datetimes for the same day
+            s_dt = datetime.datetime.combine(day, datetime.time.fromisoformat(s), tzinfo=LOCAL_TZ)
+            e_dt = datetime.datetime.combine(day, datetime.time.fromisoformat(e), tzinfo=LOCAL_TZ)
+            print(f"→ Creating {desc} {s}-{e} ({day})")
+            # uncomment next line when ready:
+            # post_time_entry(WORKSPACE_ID, project, task, desc, s_dt, e_dt, billable)
 
 
 # ====== run ======
