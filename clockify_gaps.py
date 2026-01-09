@@ -28,7 +28,7 @@ if not WORKSPACE_ID:
 LOCAL_TZ = ZoneInfo("Asia/Manila")         # your actual timezone
 WORK_START = 9 * 60   # 09:00
 WORK_END   = 18 * 60  # 18:00
-ENTRY_DESC = "[Dev Work & Bug Fixing]"
+ENTRY_DESC = "[Dev Work, Reviewing code, Wrapping up December tasks]"
 
 HEADERS = {"x-api-key": API_KEY}
 
