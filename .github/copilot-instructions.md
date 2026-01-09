@@ -1,26 +1,17 @@
 # Copilot Instructions for clockify_fill-gaps
 
-- **Purpose**: CLI helper to preview weekly Clockify gaps (local-time corrected) and optionally auto-create filler entries.
-- **Entry point**: [clockify_gaps.py](../clockify_gaps.py) only; no packages or tests.
-- **Required secrets**: set `CLOCKIFY_KEY` and `CLOCKIFY_WORKSPACE_ID` (loaded via `python-dotenv`). Abort early if missing.
-- **Local time**: All logic converts API data to `ZoneInfo("Asia/Manila")`. Adjust `LOCAL_TZ` if changing region; gaps are computed in local minutes-of-day.
-- **Workday window**: `WORK_START/WORK_END` minutes (defaults 09:00–18:00). Gaps outside this window are ignored. Lunch (`LUNCH_START`/`LUNCH_END`, defaults 12:00–13:00) is treated as busy and never filled.
-- **Description template**: `ENTRY_DESC` is reused for all filler entries.
-- **Week selection**: Script prompts for any date (YYYY-MM-DD). It computes the Monday–Sunday window containing that date.
-- **Fetch flow**: `get_user_info()` → `get_entries()` (UTC range) → localize via `zoneinfo` → `group_by_local_day()` → `find_gaps()` merges overlaps before finding empty spans.
-- **Preview output**: Prints gaps per day as `HH:MM-HH:MM`, or `None` if fully covered.
-- **Posting behavior**: After preview, prompts `Create filler entries... (y/N)`. On `y`, reuses project/task/billable from the first entry of each day and posts one filler per gap using `post_time_entry()`.
-- **Safety**: `post_time_entry()` is live; remove `print` or add a dry-run flag if you need simulation.
-- **API endpoints**: Uses Clockify v1 `user`, `time-entries` GET, and `time-entries` POST; headers require `x-api-key`.
-- **Inputs parsing**: Dates parsed with `dateutil.parser` for intervals; manual ISO parsing for the prompt.
-- **Python version**: Needs 3.9+ for `zoneinfo`.
-- **Install & run**:
-  - `pip install -r requirements.txt`
-  - `python clockify_gaps.py`
-- **Modifying gap rules**: Update `find_gaps()` to inject breaks (e.g., lunch) before computing gaps. Keep minutes-based logic and sorted merge behavior intact.
-- **Extending entries**: If you need different projects/tasks per day, change the selection of `first_raw` in `preview_week()`; it's currently first entry of that day.
-- **Error handling**: Network calls use `raise_for_status()` except POST (prints warning). Add retries or better logging if running unattended.
-- **Configuration storage**: `.env` supported via `python-dotenv`; avoid hardcoding keys.
-- **Data inspection**: `get_entries()` retains `raw_data`; handy if you need more fields when constructing fillers.
-- **Default prompts**: Empty date input defaults to today; non-ISO input falls back to today with a notice.
-- **Publishing/CI**: None present; single-file script.
+- **Purpose**: Single-file CLI to preview weekly Clockify gaps (local-time corrected) and optionally auto-create filler entries; entry point is [main.py](../main.py).
+- **Runtime/deps**: Targets Python 3.13.7+ ([pyproject.toml](../pyproject.toml)); installs `requests`, `python-dateutil`, `python-dotenv`, and `tzdata` (needed on Windows for `ZoneInfo`). Use `python -m pip install -e .` to pull dependencies.
+- **Secrets/config**: Requires env vars `CLOCKIFY_KEY` and `CLOCKIFY_WORKSPACE_ID`; missing values abort early in [main.py](../main.py). `.env` is loaded automatically via `python-dotenv`.
+- **Timezone & work window**: All API timestamps are converted to `ZoneInfo("Asia/Manila")`; adjust `LOCAL_TZ` to change region. Workday limits `WORK_START/WORK_END` default to 09:00–18:00; lunch `LUNCH_START/LUNCH_END` (12:00–13:00) is treated as busy so fillers never cover it ([main.py](../main.py)).
+- **Gap detection**: `find_gaps()` converts localized entries to minute-of-day, merges overlaps, injects lunch as a blocked span, and returns `HH:MM` gaps within the work window ([main.py](../main.py)). Keep spans sorted and minutes-based if you change rules.
+- **API flow**: `preview_week()` → `get_user_info()` (Clockify v1 `user`) → `get_entries()` (v1 `time-entries` GET over UTC range) → localize → `group_by_local_day()` → `find_gaps()` per day ([main.py](../main.py)). Headers always include `x-api-key`.
+- **Week selection**: Prompt accepts any `YYYY-MM-DD`; blank defaults to today; invalid input falls back to today with a notice. The script computes the Monday–Sunday window containing that date ([main.py](../main.py)).
+- **Preview output**: Prints gaps per day as `HH:MM-HH:MM`, or `None` when fully covered ([main.py](../main.py)).
+- **Posting behavior**: After preview, prompt `Create filler entries... (y/N)`. On `y`, picks the first entry of each local day to reuse `projectId`, `taskId`, and `billable`; posts one filler per gap with `ENTRY_DESC` ([main.py](../main.py)).
+- **Safety**: `post_time_entry()` is live (Clockify v1 POST); fillers are created immediately. Comment out the call inside `preview_week()` if you need a dry-run. Warn on non-200/201 responses ([main.py](../main.py)).
+- **Request formatting**: All outbound timestamps are forced to UTC with a trailing `Z` (`%Y-%m-%dT%H:%M:%SZ`); inbound GET params use `.000Z` and payloads use the same format ([main.py](../main.py)).
+- **Defaults to reuse**: `ENTRY_DESC` is the filler description template; adjust constants near the top for work hours, lunch, and timezone ([main.py](../main.py)).
+- **Running locally**: Typical flow—export `CLOCKIFY_KEY`/`CLOCKIFY_WORKSPACE_ID` (or use `.env`), run `python main.py`, choose a date, review gaps, then confirm posting.
+- **Extending/patching**: If you need per-day project selection, change the `first_raw` lookup in `preview_week()`; keep the `raw_data` list intact for richer metadata. For new gap rules (breaks, holidays), inject spans before the merge inside `find_gaps()`.
+- **Diagnostics**: Network calls use `raise_for_status()` on GET; POST prints warnings only. Add retries/logging around `requests` if running unattended.
