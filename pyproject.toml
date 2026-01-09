@@ -1,7 +1,7 @@
 [project]
 name = "clockify-fill-gaps"
 version = "0.1.0"
-description = "Add your description here"
+description = "Just to automate filling of remaining gaps of time in between Clockify time entries (e.g., meetings)"
 readme = "README.md"
 requires-python = ">=3.13.7"
 dependencies = [
