@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 Clockify Weekly Gap Preview (local‑time corrected)
+
+Known issues:
+  - No option to set the right project (may be randomly assigned)
 """
 
 import os
