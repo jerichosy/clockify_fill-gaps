@@ -28,6 +28,8 @@ if not WORKSPACE_ID:
 LOCAL_TZ = ZoneInfo("Asia/Manila")         # your actual timezone
 WORK_START = 9 * 60   # 09:00
 WORK_END   = 18 * 60  # 18:00
+LUNCH_START = 12 * 60  # 12:00 (treated as busy; never filled)
+LUNCH_END   = 13 * 60  # 13:00
 ENTRY_DESC = "[Dev Work & Bug Fixing]"
 
 HEADERS = {"x-api-key": API_KEY}
@@ -49,7 +51,15 @@ def to_hhmm(m: int) -> str:
 
 def find_gaps(entries, start_m: int, end_m: int):
     """Return list of (start,end) hh:mm gaps inside work hours for one day."""
-    spans = sorted((to_minutes(s), to_minutes(e)) for s, e in entries)
+    spans = [(to_minutes(s), to_minutes(e)) for s, e in entries]
+    # Treat lunch as a pre-booked interval so fillers never cover it
+    if LUNCH_START is not None and LUNCH_END is not None:
+        lunch_s = max(start_m, LUNCH_START)
+        lunch_e = min(end_m, LUNCH_END)
+        if lunch_s < lunch_e:
+            spans.append((lunch_s, lunch_e))
+
+    spans.sort()
     merged = []
     for s, e in spans:
         if not merged or s > merged[-1][1]:
