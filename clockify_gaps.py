@@ -30,7 +30,7 @@ WORK_START = 9 * 60   # 09:00
 WORK_END   = 18 * 60  # 18:00
 LUNCH_START = 12 * 60  # 12:00 (treated as busy; never filled)
 LUNCH_END   = 13 * 60  # 13:00
-ENTRY_DESC = "[Dev Work & Bug Fixing]"
+ENTRY_DESC = "[Dev Work, Reviewing code]"
 
 HEADERS = {"x-api-key": API_KEY}
 
