@@ -70,6 +70,12 @@ uv run main.py
 
 ---
 
+## Known limitations
+
+- **No project/task selection** — the project and task used for filler entries cannot be specified. They are chosen at random from the existing entries of that day.
+
+---
+
 ## Troubleshooting
 
 | Error / symptom | Likely cause |
@@ -77,4 +83,3 @@ uv run main.py
 | `Please set your API key...` | `CLOCKIFY_KEY` missing or `.env` not found |
 | `Please set your workspace ID...` | `CLOCKIFY_WORKSPACE_ID` missing or wrong |
 | No entries found | Wrong date, wrong workspace ID, or API key lacks access |
-| Wrong project on fillers | Known limitation: reuses project/task from the **first entry of that day** |
