@@ -6,23 +6,35 @@ import os
 import unittest
 from unittest import mock
 
-with mock.patch.dict(
-    os.environ,
-    {"CLOCKIFY_KEY": "test-key", "CLOCKIFY_WORKSPACE_ID": "workspace-id"},
-    clear=False,
-):
-    import main as main_module
-
-    main = importlib.reload(main_module)
+ENV_VARS = {"CLOCKIFY_KEY": "test-key", "CLOCKIFY_WORKSPACE_ID": "workspace-id"}
 
 
-class TestFindGaps(unittest.TestCase):
+def load_main():
+    with mock.patch.dict(os.environ, ENV_VARS, clear=False):
+        import main as main_module
+
+        return importlib.reload(main_module)
+
+
+def to_utc_string(dt):
+    return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class MainTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.main = load_main()
+
+
+class TestFindGaps(MainTestCase):
     def test_empty_entries_shows_work_hours_excluding_lunch(self):
+        main = self.main
         gaps = main.find_gaps([], main.WORK_START, main.WORK_END)
 
         self.assertEqual(gaps, [("09:00", "12:00"), ("13:00", "18:00")])
 
     def test_overlaps_merge_with_lunch(self):
+        main = self.main
         day = datetime.date(2024, 2, 5)
         entries = [
             (
@@ -44,8 +56,9 @@ class TestFindGaps(unittest.TestCase):
         self.assertEqual(gaps, [("13:00", "15:00"), ("16:00", "18:00")])
 
 
-class TestGroupByLocalDay(unittest.TestCase):
+class TestGroupByLocalDay(MainTestCase):
     def test_groups_entries_by_start_date(self):
+        main = self.main
         day_one = datetime.date(2024, 3, 4)
         day_two = datetime.date(2024, 3, 5)
         entries = [
@@ -66,7 +79,7 @@ class TestGroupByLocalDay(unittest.TestCase):
         self.assertEqual(grouped[day_two], [entries[1]])
 
 
-class TestPreviewWeek(unittest.TestCase):
+class TestPreviewWeek(MainTestCase):
     @mock.patch("main.post_time_entry")
     @mock.patch("main.get_entries")
     @mock.patch("main.get_user_info")
@@ -74,6 +87,7 @@ class TestPreviewWeek(unittest.TestCase):
     def test_prints_gaps_for_selected_week(
         self, mock_input, mock_get_user_info, mock_get_entries, mock_post_time_entry
     ):
+        main = self.main
         selected_date = "2024-04-10"
         decline_confirmation = "n"
         mock_input.side_effect = [selected_date, decline_confirmation]
@@ -91,9 +105,6 @@ class TestPreviewWeek(unittest.TestCase):
                 datetime.datetime.combine(tuesday, datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
             ),
         ]
-        def to_utc_string(dt):
-            return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
         raw_data = [
             {
                 "timeInterval": {
@@ -143,6 +154,7 @@ class TestPreviewWeek(unittest.TestCase):
     def test_creates_filler_entries_when_confirmed(
         self, mock_input, mock_get_user_info, mock_get_entries, mock_post_time_entry
     ):
+        main = self.main
         selected_date = "2024-04-10"
         confirm_creation = "y"
         mock_input.side_effect = [selected_date, confirm_creation]
@@ -152,8 +164,8 @@ class TestPreviewWeek(unittest.TestCase):
         start_local = datetime.datetime.combine(monday, datetime.time(9, 0), tzinfo=main.LOCAL_TZ)
         end_local = datetime.datetime.combine(monday, datetime.time(10, 0), tzinfo=main.LOCAL_TZ)
         entries = [(start_local, end_local)]
-        start_utc = start_local.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        end_utc = end_local.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        start_utc = to_utc_string(start_local)
+        end_utc = to_utc_string(end_local)
         raw_data = [
             {
                 "timeInterval": {"start": start_utc, "end": end_utc},
