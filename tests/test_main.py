@@ -17,7 +17,7 @@ with mock.patch.dict(
 
 
 class TestFindGaps(unittest.TestCase):
-    def test_empty_entries_includes_lunch_gap(self):
+    def test_empty_entries_shows_work_hours_excluding_lunch(self):
         gaps = main.find_gaps([], main.WORK_START, main.WORK_END)
 
         self.assertEqual(gaps, [("09:00", "12:00"), ("13:00", "18:00")])
@@ -71,7 +71,7 @@ class TestPreviewWeek(unittest.TestCase):
     @mock.patch("main.get_entries")
     @mock.patch("main.get_user_info")
     @mock.patch("builtins.input")
-    def test_preview_week_prints_gaps_for_selected_week(
+    def test_prints_gaps_for_selected_week(
         self, mock_input, mock_get_user_info, mock_get_entries, mock_post_time_entry
     ):
         selected_date = "2024-04-10"
@@ -109,6 +109,65 @@ class TestPreviewWeek(unittest.TestCase):
         self.assertEqual(start_dt.tzinfo, datetime.timezone.utc)
         self.assertEqual(start_dt.date(), monday)
         self.assertEqual(end_dt, start_dt + datetime.timedelta(days=7))
+
+    @mock.patch("main.post_time_entry")
+    @mock.patch("main.get_entries")
+    @mock.patch("main.get_user_info")
+    @mock.patch("builtins.input")
+    def test_creates_filler_entries_when_confirmed(
+        self, mock_input, mock_get_user_info, mock_get_entries, mock_post_time_entry
+    ):
+        selected_date = "2024-04-10"
+        confirm_creation = "y"
+        mock_input.side_effect = [selected_date, confirm_creation]
+        mock_get_user_info.return_value = {"id": "user-456", "email": "tester@example.com"}
+
+        monday = datetime.date(2024, 4, 8)
+        start_local = datetime.datetime.combine(monday, datetime.time(9, 0), tzinfo=main.LOCAL_TZ)
+        end_local = datetime.datetime.combine(monday, datetime.time(10, 0), tzinfo=main.LOCAL_TZ)
+        entries = [(start_local, end_local)]
+        start_utc = start_local.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_utc = end_local.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        raw_data = [
+            {
+                "timeInterval": {"start": start_utc, "end": end_utc},
+                "projectId": "project-1",
+                "taskId": "task-1",
+                "billable": False,
+            }
+        ]
+        mock_get_entries.return_value = (entries, raw_data)
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            main.preview_week()
+
+        self.assertEqual(mock_post_time_entry.call_count, 2)
+        first_call, second_call = mock_post_time_entry.call_args_list
+        self.assertEqual(
+            first_call.args,
+            (
+                main.WORKSPACE_ID,
+                "project-1",
+                "task-1",
+                main.ENTRY_DESC,
+                datetime.datetime.combine(monday, datetime.time(10, 0), tzinfo=main.LOCAL_TZ),
+                datetime.datetime.combine(monday, datetime.time(12, 0), tzinfo=main.LOCAL_TZ),
+                False,
+            ),
+        )
+        self.assertEqual(
+            second_call.args,
+            (
+                main.WORKSPACE_ID,
+                "project-1",
+                "task-1",
+                main.ENTRY_DESC,
+                datetime.datetime.combine(monday, datetime.time(13, 0), tzinfo=main.LOCAL_TZ),
+                datetime.datetime.combine(monday, datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
+                False,
+            ),
+        )
 
 
 if __name__ == "__main__":
