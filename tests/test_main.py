@@ -1,14 +1,19 @@
 import contextlib
 import datetime
+import importlib
 import io
 import os
 import unittest
 from unittest import mock
 
-os.environ.setdefault("CLOCKIFY_KEY", "test-key")
-os.environ.setdefault("CLOCKIFY_WORKSPACE_ID", "workspace-id")
+with mock.patch.dict(
+    os.environ,
+    {"CLOCKIFY_KEY": "test-key", "CLOCKIFY_WORKSPACE_ID": "workspace-id"},
+    clear=False,
+):
+    import main as main_module
 
-import main
+    main = importlib.reload(main_module)
 
 
 class TestFindGaps(unittest.TestCase):
@@ -69,7 +74,9 @@ class TestPreviewWeek(unittest.TestCase):
     def test_preview_week_prints_gaps_for_selected_week(
         self, mock_input, mock_get_user_info, mock_get_entries, mock_post_time_entry
     ):
-        mock_input.side_effect = ["2024-04-10", "n"]
+        selected_date = "2024-04-10"
+        decline_confirmation = "n"
+        mock_input.side_effect = [selected_date, decline_confirmation]
         mock_get_user_info.return_value = {"id": "user-123", "name": "Test User"}
 
         monday = datetime.date(2024, 4, 8)
@@ -83,7 +90,8 @@ class TestPreviewWeek(unittest.TestCase):
                 datetime.datetime.combine(monday + datetime.timedelta(days=1), datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
             ),
         ]
-        mock_get_entries.return_value = (entries, [])
+        raw_data = []
+        mock_get_entries.return_value = (entries, raw_data)
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
