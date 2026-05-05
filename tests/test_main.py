@@ -10,20 +10,21 @@ ENV_VARS = {"CLOCKIFY_KEY": "test-key", "CLOCKIFY_WORKSPACE_ID": "workspace-id"}
 
 
 def load_main():
+    """Reload the main module with patched env vars for deterministic tests."""
     with mock.patch.dict(os.environ, ENV_VARS, clear=False):
         import main as main_module
 
         return importlib.reload(main_module)
 
 
-def to_utc_string(dt):
-    return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
 class MainTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.main = load_main()
+
+    @staticmethod
+    def to_utc_string(dt):
+        return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class TestFindGaps(MainTestCase):
@@ -108,8 +109,8 @@ class TestPreviewWeek(MainTestCase):
         raw_data = [
             {
                 "timeInterval": {
-                    "start": to_utc_string(entries[0][0]),
-                    "end": to_utc_string(entries[0][1]),
+                    "start": self.to_utc_string(entries[0][0]),
+                    "end": self.to_utc_string(entries[0][1]),
                 },
                 "projectId": "project-1",
                 "taskId": "task-1",
@@ -117,8 +118,8 @@ class TestPreviewWeek(MainTestCase):
             },
             {
                 "timeInterval": {
-                    "start": to_utc_string(entries[1][0]),
-                    "end": to_utc_string(entries[1][1]),
+                    "start": self.to_utc_string(entries[1][0]),
+                    "end": self.to_utc_string(entries[1][1]),
                 },
                 "projectId": "project-2",
                 "taskId": "task-2",
@@ -164,8 +165,8 @@ class TestPreviewWeek(MainTestCase):
         start_local = datetime.datetime.combine(monday, datetime.time(9, 0), tzinfo=main.LOCAL_TZ)
         end_local = datetime.datetime.combine(monday, datetime.time(10, 0), tzinfo=main.LOCAL_TZ)
         entries = [(start_local, end_local)]
-        start_utc = to_utc_string(start_local)
-        end_utc = to_utc_string(end_local)
+        start_utc = self.to_utc_string(start_local)
+        end_utc = self.to_utc_string(end_local)
         raw_data = [
             {
                 "timeInterval": {"start": start_utc, "end": end_utc},
