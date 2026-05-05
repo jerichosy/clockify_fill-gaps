@@ -8,19 +8,16 @@ from unittest import mock
 
 ENV_VARS = {"CLOCKIFY_KEY": "test-key", "CLOCKIFY_WORKSPACE_ID": "workspace-id"}
 
-
-def load_main():
-    """Reload the main module with patched env vars for deterministic tests."""
-    with mock.patch.dict(os.environ, ENV_VARS, clear=False):
+class MainTestCase(unittest.TestCase):
+    def setUp(self):
+        self.env_patcher = mock.patch.dict(os.environ, ENV_VARS, clear=False)
+        self.env_patcher.start()
         import main as main_module
 
-        return importlib.reload(main_module)
+        self.main = importlib.reload(main_module)
 
-
-class MainTestCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.main = load_main()
+    def tearDown(self):
+        self.env_patcher.stop()
 
     @staticmethod
     def to_utc_string(dt):
