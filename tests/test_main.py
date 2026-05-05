@@ -91,7 +91,29 @@ class TestPreviewWeek(unittest.TestCase):
                 datetime.datetime.combine(tuesday, datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
             ),
         ]
-        raw_data = []
+        def to_utc_string(dt):
+            return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        raw_data = [
+            {
+                "timeInterval": {
+                    "start": to_utc_string(entries[0][0]),
+                    "end": to_utc_string(entries[0][1]),
+                },
+                "projectId": "project-1",
+                "taskId": "task-1",
+                "billable": True,
+            },
+            {
+                "timeInterval": {
+                    "start": to_utc_string(entries[1][0]),
+                    "end": to_utc_string(entries[1][1]),
+                },
+                "projectId": "project-2",
+                "taskId": "task-2",
+                "billable": True,
+            },
+        ]
         mock_get_entries.return_value = (entries, raw_data)
 
         output = io.StringIO()
@@ -101,7 +123,7 @@ class TestPreviewWeek(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("Previewing week of 2024-04-08 → 2024-04-14", text)
         self.assertIn(
-            f"Retrieved 2 entries for current week (local tz {main.LOCAL_TZ.key}).",
+            f"Retrieved 2 entries for current week (local tz {main.LOCAL_TZ}).",
             text,
         )
         self.assertIn("2024-04-08  →  10:00-12:00, 13:00-18:00", text)
