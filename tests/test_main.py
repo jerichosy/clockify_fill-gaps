@@ -80,14 +80,15 @@ class TestPreviewWeek(unittest.TestCase):
         mock_get_user_info.return_value = {"id": "user-123", "name": "Test User"}
 
         monday = datetime.date(2024, 4, 8)
+        tuesday = monday + datetime.timedelta(days=1)
         entries = [
             (
                 datetime.datetime.combine(monday, datetime.time(9, 0), tzinfo=main.LOCAL_TZ),
                 datetime.datetime.combine(monday, datetime.time(10, 0), tzinfo=main.LOCAL_TZ),
             ),
             (
-                datetime.datetime.combine(monday + datetime.timedelta(days=1), datetime.time(9, 0), tzinfo=main.LOCAL_TZ),
-                datetime.datetime.combine(monday + datetime.timedelta(days=1), datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
+                datetime.datetime.combine(tuesday, datetime.time(9, 0), tzinfo=main.LOCAL_TZ),
+                datetime.datetime.combine(tuesday, datetime.time(18, 0), tzinfo=main.LOCAL_TZ),
             ),
         ]
         raw_data = []
@@ -99,7 +100,10 @@ class TestPreviewWeek(unittest.TestCase):
 
         text = output.getvalue()
         self.assertIn("Previewing week of 2024-04-08 → 2024-04-14", text)
-        self.assertIn("Retrieved 2 entries for current week (local tz Asia/Manila).", text)
+        self.assertIn(
+            f"Retrieved 2 entries for current week (local tz {main.LOCAL_TZ.key}).",
+            text,
+        )
         self.assertIn("2024-04-08  →  10:00-12:00, 13:00-18:00", text)
         self.assertIn("2024-04-09  →  None", text)
         self.assertIn("No entries created.", text)
